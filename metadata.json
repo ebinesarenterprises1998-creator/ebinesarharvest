@@ -1,0 +1,6 @@
+{
+  "name": "EBINESAR HARVEST",
+  "description": "Premium faith-rooted agricultural e-commerce platform featuring curated organic seeds, cold-pressed oils, sacred grains, automated customer email notifications for orders, shipping updates, authentication, secure Razorpay checkout, and administrative inventory management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

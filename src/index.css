@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-cinzel: 'Cinzel', serif;
+    --font-playfair: 'Playfair Display', serif;
+    --font-jakarta: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  body {
+    font-family: var(--font-jakarta), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #F9F7F2;
+    color: #1A2F1A;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-playfair), Georgia, serif;
+  }
+
+  .font-brand {
+    font-family: var(--font-cinzel), serif;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F4F1EA;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2D4F2D;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1E3A1E;
+}
+
+/* Frosted Glass Utilities */
+.frosted-glass {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 220, 200, 0.7);
+}
+
+.frosted-card {
+  background: #FDFCF9;
+  border: 1px solid #F0EBE0;
+  box-shadow: 0 4px 20px -2px rgba(26, 47, 26, 0.04);
+}
+
+.frosted-card:hover {
+  box-shadow: 0 20px 30px -10px rgba(45, 79, 45, 0.12);
+}
+
+.frosted-glass-hero {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 25px 50px -12px rgba(45, 79, 45, 0.25);
+}
+
+.frosted-glass-dark {
+  background: rgba(26, 47, 26, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.gold-gradient {
+  background: linear-gradient(135deg, #D4AF37 0%, #F5E6AB 50%, #B89726 100%);
+}
+
+.frosted-pill {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 220, 200, 0.8);
+}
+
+
