@@ -1,6 +1,6 @@
 {
-  "name": "EBINESAR HARVEST",
-  "description": "Premium faith-rooted agricultural e-commerce platform featuring curated organic seeds, cold-pressed oils, sacred grains, automated customer email notifications for orders, shipping updates, authentication, secure Razorpay checkout, and administrative inventory management.",
+  "name": "Ebinesar Harvest",
+  "description": "From His Grace, We Grow — Premium farm-based e-commerce marketplace featuring 3D farmland hero, secure Supabase backend, customer & admin authentication, and Razorpay payments.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

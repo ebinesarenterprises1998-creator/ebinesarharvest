@@ -1,214 +1,165 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CartItem, Product, Coupon } from '../types';
-import { INITIAL_COUPONS } from '../data/initialData';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { CartItem, Product } from '../types';
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (product: Product, quantity?: number) => { success: boolean; message?: string };
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => { success: boolean; message?: string };
-  clearCart: () => void;
-  totalItems: number;
+  cartCount: number;
   subtotal: number;
+  discount: number;
+  couponCode: string;
   shippingFee: number;
-  discountAmount: number;
-  totalAmount: number;
-  totalSavings: number;
-  appliedCoupon: Coupon | null;
-  applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>;
+  tax: number;
+  total: number;
+  isCartDrawerOpen: boolean;
+  openCartDrawer: () => void;
+  closeCartDrawer: () => void;
+  addToCart: (product: Product, quantity?: number) => void;
+  removeFromCart: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
+  clearCart: () => void;
+  applyCoupon: (code: string) => { success: boolean; message: string };
   removeCoupon: () => void;
-  isCartOpen: boolean;
-  setIsCartOpen: (open: boolean) => void;
-  isCheckoutOpen: boolean;
-  setIsCheckoutOpen: (open: boolean) => void;
-  quickBuy: (product: Product, quantity?: number) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = 'ebinesar_harvest_cart_items';
-const COUPON_STORAGE_KEY = 'ebinesar_harvest_coupon';
+const CART_STORAGE_KEY = 'ebinesar_cart_v1';
+const COUPON_STORAGE_KEY = 'ebinesar_coupon_v1';
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
-      const stored = localStorage.getItem(CART_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
+      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
   });
 
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(() => {
-    try {
-      const stored = localStorage.getItem(COUPON_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
+  const [couponCode, setCouponCode] = useState<string>(() => {
+    return localStorage.getItem(COUPON_STORAGE_KEY) || '';
   });
 
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState<boolean>(false);
 
   useEffect(() => {
     try {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
     } catch (e) {
-      console.error('Failed to save cart to localStorage', e);
+      console.error('Cart sync error:', e);
     }
   }, [cart]);
 
   useEffect(() => {
-    try {
-      if (appliedCoupon) {
-        localStorage.setItem(COUPON_STORAGE_KEY, JSON.stringify(appliedCoupon));
-      } else {
-        localStorage.removeItem(COUPON_STORAGE_KEY);
-      }
-    } catch (e) {
-      console.error('Failed to save coupon to localStorage', e);
+    if (couponCode) {
+      localStorage.setItem(COUPON_STORAGE_KEY, couponCode);
+    } else {
+      localStorage.removeItem(COUPON_STORAGE_KEY);
     }
-  }, [appliedCoupon]);
+  }, [couponCode]);
 
-  const addToCart = (product: Product, quantity = 1): { success: boolean; message?: string } => {
-    if (product.stock <= 0) {
-      return { success: false, message: `"${product.name}" is currently out of stock.` };
-    }
-
-    let result = { success: true, message: `Added "${product.name}" to your harvest basket.` };
-
-    setCart(prev => {
-      const existing = prev.find(item => item.product.id === product.id);
+  const addToCart = (product: Product, quantity = 1) => {
+    setCart((prev) => {
+      const existing = prev.find((item) => item.product_id === product.id);
       if (existing) {
-        const newQty = existing.quantity + quantity;
-        if (newQty > product.stock) {
-          result = {
-            success: false,
-            message: `Only ${product.stock} units available in harvest stock.`
-          };
-          return prev.map(item =>
-            item.product.id === product.id ? { ...item, quantity: product.stock } : item
-          );
-        }
-        return prev.map(item =>
-          item.product.id === product.id ? { ...item, quantity: newQty } : item
+        // Enforce inventory cap
+        const maxQty = product.inventory || 99;
+        const newQty = Math.min(maxQty, existing.quantity + quantity);
+        return prev.map((item) =>
+          item.product_id === product.id ? { ...item, quantity: newQty } : item
         );
       }
-
-      const initialQty = Math.min(quantity, product.stock);
-      return [...prev, { product, quantity: initialQty }];
+      return [
+        ...prev,
+        {
+          id: 'cart_' + Math.random().toString(36).substring(2, 9),
+          product_id: product.id,
+          product,
+          quantity: Math.min(product.inventory || 99, quantity),
+          unit_price: product.price,
+        },
+      ];
     });
-
-    return result;
-  };
-
-  const updateQuantity = (productId: string, quantity: number): { success: boolean; message?: string } => {
-    let result: { success: boolean; message?: string } = { success: true };
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return result;
-    }
-
-    setCart(prev => {
-      return prev.map(item => {
-        if (item.product.id === productId) {
-          if (quantity > item.product.stock) {
-            result = {
-              success: false,
-              message: `Maximum available harvest stock is ${item.product.stock}.`
-            };
-            return { ...item, quantity: item.product.stock };
-          }
-          return { ...item, quantity };
-        }
-        return item;
-      });
-    });
-
-    return result;
+    setIsCartDrawerOpen(true);
   };
 
   const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.product.id !== productId));
+    setCart((prev) => prev.filter((item) => item.product_id !== productId && item.product.id !== productId));
+  };
+
+  const updateQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(productId);
+      return;
+    }
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.product_id === productId || item.product.id === productId) {
+          const maxInventory = item.product.inventory || 99;
+          return { ...item, quantity: Math.min(quantity, maxInventory) };
+        }
+        return item;
+      })
+    );
   };
 
   const clearCart = () => {
     setCart([]);
-    setAppliedCoupon(null);
+    setCouponCode('');
   };
 
-  const quickBuy = (product: Product, quantity = 1) => {
-    addToCart(product, quantity);
-    setIsCartOpen(false);
-    setIsCheckoutOpen(true);
-  };
-
-  // Computations
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const totalOriginal = cart.reduce((sum, item) => sum + (item.product.original_price || item.product.price) * item.quantity, 0);
-  const originalSavings = Math.max(0, totalOriginal - subtotal);
-
-  let discountAmount = 0;
-  if (appliedCoupon && subtotal >= appliedCoupon.min_order_amount) {
-    discountAmount = (subtotal * appliedCoupon.discount_percent) / 100;
-  }
-
-  const totalSavings = originalSavings + discountAmount;
-
-  // Free shipping above ₹999 after discount
-  const shippingFee = subtotal > 0 && (subtotal - discountAmount) >= 999 ? 0 : (subtotal > 0 ? 80 : 0);
-  const totalAmount = Math.max(0, subtotal - discountAmount + shippingFee);
-
-  const applyCoupon = async (code: string): Promise<{ success: boolean; message: string }> => {
-    const cleanCode = code.toUpperCase().trim();
-    const coupon = INITIAL_COUPONS.find(c => c.code.toUpperCase() === cleanCode);
-
-    if (!coupon) {
-      return { success: false, message: 'Invalid harvest promo code.' };
+  const applyCoupon = (code: string) => {
+    const clean = code.trim().toUpperCase();
+    if (clean === 'GRACE10' || clean === 'HARVEST10') {
+      setCouponCode(clean);
+      return { success: true, message: 'Coupon applied! 10% harvest discount has been added.' };
     }
-
-    if (subtotal < coupon.min_order_amount) {
-      return {
-        success: false,
-        message: `Coupon requires a minimum order value of ₹${coupon.min_order_amount}.`
-      };
+    if (clean === 'FIRSTHARVEST') {
+      setCouponCode(clean);
+      return { success: true, message: 'Welcome gift applied! Free shipping & 15% discount.' };
     }
-
-    setAppliedCoupon(coupon);
-    return {
-      success: true,
-      message: `Promo code "${coupon.code}" applied! ${coupon.discount_percent}% off.`
-    };
+    return { success: false, message: 'Invalid or expired harvest coupon code.' };
   };
 
   const removeCoupon = () => {
-    setAppliedCoupon(null);
+    setCouponCode('');
   };
+
+  const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const subtotal = cart.reduce((total, item) => total + item.unit_price * item.quantity, 0);
+
+  let discount = 0;
+  if (couponCode === 'GRACE10' || couponCode === 'HARVEST10') {
+    discount = subtotal * 0.1;
+  } else if (couponCode === 'FIRSTHARVEST') {
+    discount = subtotal * 0.15;
+  }
+
+  const shippingFee = subtotal > 1000 || couponCode === 'FIRSTHARVEST' || cart.length === 0 ? 0 : 50;
+  const taxableAmount = Math.max(0, subtotal - discount);
+  const tax = Math.round(taxableAmount * 0.05 * 100) / 100;
+  const total = Math.max(0, Math.round(subtotal - discount + shippingFee + tax));
 
   return (
     <CartContext.Provider
       value={{
         cart,
+        cartCount,
+        subtotal,
+        discount,
+        couponCode,
+        shippingFee,
+        tax,
+        total,
+        isCartDrawerOpen,
+        openCartDrawer: () => setIsCartDrawerOpen(true),
+        closeCartDrawer: () => setIsCartDrawerOpen(false),
         addToCart,
         removeFromCart,
         updateQuantity,
         clearCart,
-        totalItems,
-        subtotal,
-        shippingFee,
-        discountAmount,
-        totalAmount,
-        totalSavings,
-        appliedCoupon,
         applyCoupon,
         removeCoupon,
-        isCartOpen,
-        setIsCartOpen,
-        isCheckoutOpen,
-        setIsCheckoutOpen,
-        quickBuy
       }}
     >
       {children}
@@ -216,7 +167,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useCart = () => {
+export const useCart = (): CartContextType => {
   const context = useContext(CartContext);
   if (!context) {
     throw new Error('useCart must be used within a CartProvider');
